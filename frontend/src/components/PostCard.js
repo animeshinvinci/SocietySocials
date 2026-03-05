@@ -29,9 +29,16 @@ const PostCard = ({ post, onReaction, onClick, compact = false }) => {
             <p className="text-xs text-slate-500">{formatTimeAgo(post.created_at)}</p>
           </div>
         </div>
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${badge.className}`}>
-          {badge.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {post.is_dummy && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-slate-400">
+              Sample
+            </span>
+          )}
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${badge.className}`}>
+            {badge.label}
+          </span>
+        </div>
       </div>
 
       {/* Title */}

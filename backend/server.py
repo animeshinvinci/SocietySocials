@@ -142,6 +142,7 @@ class PostResponse(BaseModel):
     comment_count: int
     user_reaction: Optional[str] = None
     user_voted_option: Optional[str] = None
+    is_dummy: bool = False
 
 class CommentCreate(BaseModel):
     body: str
@@ -167,6 +168,29 @@ class ReportCreate(BaseModel):
     target_id: str
     reason: Literal['abusive', 'spam', 'doxxing', 'misinformation', 'other']
 
+class SocietyRequestCreate(BaseModel):
+    name: str
+    locality: str
+    city: str
+    total_units: Optional[int] = None
+    requester_mobile_hash: Optional[str] = None
+
+class SocietyRequestResponse(BaseModel):
+    id: str
+    name: str
+    locality: str
+    city: str
+    total_units: Optional[int]
+    status: str
+    created_at: str
+
+class PersonaUpdateRequest(BaseModel):
+    persona_name: str
+
+class PersonaSuggestionResponse(BaseModel):
+    suggestions: List[str]
+    is_available: bool
+
 # ==================== SEED DATA ====================
 SEED_SOCIETIES = [
     {"name": "Sobha Dream Acres", "locality": "Marathahalli", "city": "Bengaluru", "total_units": 1200},
@@ -178,8 +202,16 @@ SEED_SOCIETIES = [
     {"name": "RMZ Galleria", "locality": "Yelahanka", "city": "Bengaluru", "total_units": 600},
     {"name": "Salarpuria Sattva Divinity", "locality": "RR Nagar", "city": "Bengaluru", "total_units": 900},
     {"name": "Provident Welworth City", "locality": "Doddaballapur", "city": "Bengaluru", "total_units": 700},
-    {"name": "Purva Panorama", "locality": "Bannerghatta Road", "city": "Bengaluru", "total_units": 1000}
+    {"name": "Purva Panorama", "locality": "Bannerghatta Road", "city": "Bengaluru", "total_units": 1000},
+    {"name": "Bren Zahara", "locality": "Kasavanahalli, Sarjapur Road", "city": "Bengaluru", "total_units": 303},
+    {"name": "SJR Blue Waters", "locality": "Harlur Road", "city": "Bengaluru", "total_units": 1244},
+    {"name": "Bren Edgewaters", "locality": "Kasavanahalli", "city": "Bengaluru", "total_units": 191},
+    {"name": "Oberoi Splendor", "locality": "Andheri East", "city": "Mumbai", "total_units": 1296},
+    {"name": "Test Society", "locality": "Test Area", "city": "Test City", "total_units": 100, "is_test": True}
 ]
+
+# Demo society constant
+DEMO_SOCIETY_NAME = "Demo Society"
 
 async def seed_societies():
     count = await db.societies.count_documents({})
@@ -188,8 +220,17 @@ async def seed_societies():
             society = SocietyBase(**s)
             doc = society.model_dump()
             doc['created_at'] = doc['created_at'].isoformat() if 'created_at' in doc else datetime.now(timezone.utc).isoformat()
+            doc['is_test'] = s.get('is_test', False)
             await db.societies.insert_one(doc)
-        logging.info("Seeded 10 societies")
+        
+        # Add demo society
+        demo_society = SocietyBase(name=DEMO_SOCIETY_NAME, locality="Demo Area", city="Demo City", total_units=500)
+        demo_doc = demo_society.model_dump()
+        demo_doc['created_at'] = datetime.now(timezone.utc).isoformat()
+        demo_doc['is_demo'] = True
+        await db.societies.insert_one(demo_doc)
+        
+        logging.info("Seeded societies including demo")
 
 # Demo account constant
 DEMO_USER_ID = "demo-user-12345"
@@ -334,7 +375,8 @@ async def seed_demo_posts(society_id: str):
                 "agree": random.randint(0, 12),
                 "interesting": random.randint(0, 8),
                 "me_too": random.randint(0, 6)
-            }
+            },
+            "is_dummy": True
         }
         await db.posts.insert_one(post_doc)
         
@@ -476,16 +518,119 @@ async def login_demo():
 
 # ==================== SOCIETIES ENDPOINTS ====================
 @api_router.get("/societies", response_model=List[SocietyResponse])
-async def get_societies(search: Optional[str] = None):
+async def get_societies(search: Optional[str] = None, exclude_demo: bool = True):
     await seed_societies()
     query = {}
+    if exclude_demo:
+        query["is_demo"] = {"$ne": True}
     if search:
-        query = {"$or": [
+        search_query = {"$or": [
             {"name": {"$regex": search, "$options": "i"}},
             {"locality": {"$regex": search, "$options": "i"}}
         ]}
+        if query:
+            query = {"$and": [query, search_query]}
+        else:
+            query = search_query
     societies = await db.societies.find(query, {"_id": 0}).to_list(100)
     return societies
+
+@api_router.get("/societies/{society_id}")
+async def get_society(society_id: str):
+    society = await db.societies.find_one({"id": society_id}, {"_id": 0})
+    if not society:
+        raise HTTPException(status_code=404, detail="Society not found")
+    return society
+
+@api_router.get("/societies/demo/info")
+async def get_demo_society():
+    """Get demo society for preview"""
+    await seed_societies()
+    demo = await db.societies.find_one({"is_demo": True}, {"_id": 0})
+    if not demo:
+        raise HTTPException(status_code=404, detail="Demo society not found")
+    await seed_demo_posts(demo['id'])
+    return demo
+
+@api_router.post("/societies/request")
+async def request_new_society(request: SocietyRequestCreate, user_id: Optional[str] = None):
+    """Submit a request to add a new society"""
+    # Check if society already exists
+    existing = await db.societies.find_one({
+        "name": {"$regex": f"^{request.name}$", "$options": "i"}
+    }, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Society already exists")
+    
+    # Check if request already pending
+    pending = await db.society_requests.find_one({
+        "name": {"$regex": f"^{request.name}$", "$options": "i"},
+        "status": "pending"
+    }, {"_id": 0})
+    if pending:
+        raise HTTPException(status_code=400, detail="Request already pending for this society")
+    
+    request_doc = {
+        "id": str(uuid.uuid4()),
+        "name": request.name,
+        "locality": request.locality,
+        "city": request.city,
+        "total_units": request.total_units,
+        "requester_id": user_id,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.society_requests.insert_one(request_doc)
+    
+    return {"success": True, "message": "Request submitted for admin review", "request_id": request_doc["id"]}
+
+@api_router.get("/societies/requests/pending")
+async def get_pending_requests():
+    """Get all pending society requests (admin only)"""
+    requests = await db.society_requests.find({"status": "pending"}, {"_id": 0}).to_list(100)
+    return requests
+
+# ==================== PERSONA ENDPOINTS ====================
+@api_router.get("/persona/check/{name}")
+async def check_persona_availability(name: str):
+    """Check if a persona name is available"""
+    existing = await db.users.find_one({"persona_name": name}, {"_id": 0})
+    return {"available": existing is None, "name": name}
+
+@api_router.get("/persona/suggestions")
+async def get_persona_suggestions(count: int = 4):
+    """Generate persona name suggestions"""
+    suggestions = []
+    attempts = 0
+    while len(suggestions) < count and attempts < 20:
+        name = generate_persona_name()
+        existing = await db.users.find_one({"persona_name": name}, {"_id": 0})
+        if not existing and name not in suggestions:
+            suggestions.append(name)
+        attempts += 1
+    return {"suggestions": suggestions}
+
+@api_router.put("/users/{user_id}/persona")
+async def update_persona(user_id: str, request: PersonaUpdateRequest):
+    """Update user's persona name"""
+    # Validate name format
+    if not request.persona_name or len(request.persona_name) < 5 or len(request.persona_name) > 30:
+        raise HTTPException(status_code=400, detail="Persona name must be 5-30 characters")
+    
+    # Check if name is taken
+    existing = await db.users.find_one({"persona_name": request.persona_name, "id": {"$ne": user_id}}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="This persona name is already taken")
+    
+    # Update user
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"persona_name": request.persona_name}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"success": True, "persona_name": request.persona_name}
 
 # ==================== POSTS ENDPOINTS ====================
 @api_router.post("/posts", response_model=PostResponse)
@@ -561,9 +706,23 @@ async def create_post(post: PostCreate, user_id: str):
     )
 
 @api_router.get("/posts", response_model=List[PostResponse])
-async def get_posts(society_id: str, user_id: str, sort: str = "latest"):
+async def get_posts(
+    society_id: str, 
+    user_id: str, 
+    sort: str = "latest",
+    post_type: Optional[str] = None,
+    include_dummy: bool = True
+):
     posts = []
     query = {"society_id": society_id, "is_removed": False}
+    
+    # Filter by post type
+    if post_type and post_type in ['discussion', 'question', 'poll']:
+        query["post_type"] = post_type
+    
+    # Filter dummy posts
+    if not include_dummy:
+        query["is_dummy"] = {"$ne": True}
     
     if sort == "popular":
         pipeline = [
@@ -637,7 +796,8 @@ async def get_posts(society_id: str, user_id: str, sort: str = "latest"):
             reactions=post.get('reactions', {"agree": 0, "interesting": 0, "me_too": 0}),
             comment_count=comment_count_map.get(post['id'], 0),
             user_reaction=user_reaction_map.get(post['id']),
-            user_voted_option=user_vote_map.get(post['id'])
+            user_voted_option=user_vote_map.get(post['id']),
+            is_dummy=post.get('is_dummy', False)
         ))
     
     return posts
@@ -672,7 +832,8 @@ async def get_post(post_id: str, user_id: str):
         reactions=post.get('reactions', {"agree": 0, "interesting": 0, "me_too": 0}),
         comment_count=comment_count,
         user_reaction=user_reaction['reaction_type'] if user_reaction else None,
-        user_voted_option=user_voted['option_id'] if user_voted else None
+        user_voted_option=user_voted['option_id'] if user_voted else None,
+        is_dummy=post.get('is_dummy', False)
     )
 
 @api_router.post("/posts/{post_id}/close-poll")

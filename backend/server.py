@@ -588,15 +588,35 @@ async def get_posts(society_id: str, user_id: str, sort: str = "latest"):
     else:
         post_docs = await db.posts.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
     
+    if not post_docs:
+        return posts
+    
+    # Batch fetch all authors
+    author_ids = list(set(p['author_id'] for p in post_docs))
+    authors_list = await db.users.find({"id": {"$in": author_ids}}, {"_id": 0, "id": 1, "persona_name": 1, "persona_color": 1}).to_list(len(author_ids))
+    author_map = {a['id']: a for a in authors_list}
+    
+    # Batch fetch comment counts
+    post_ids = [p['id'] for p in post_docs]
+    comment_counts_pipeline = [
+        {"$match": {"post_id": {"$in": post_ids}, "is_removed": False}},
+        {"$group": {"_id": "$post_id", "count": {"$sum": 1}}}
+    ]
+    comment_counts_list = await db.comments.aggregate(comment_counts_pipeline).to_list(len(post_ids))
+    comment_count_map = {c['_id']: c['count'] for c in comment_counts_list}
+    
+    # Batch fetch user reactions
+    user_reactions_list = await db.reactions.find({"post_id": {"$in": post_ids}, "user_id": user_id}, {"_id": 0, "post_id": 1, "reaction_type": 1}).to_list(len(post_ids))
+    user_reaction_map = {r['post_id']: r['reaction_type'] for r in user_reactions_list}
+    
+    # Batch fetch user votes
+    user_votes_list = await db.votes.find({"post_id": {"$in": post_ids}, "voter_id": user_id}, {"_id": 0, "post_id": 1, "option_id": 1}).to_list(len(post_ids))
+    user_vote_map = {v['post_id']: v['option_id'] for v in user_votes_list}
+    
     for post in post_docs:
-        author = await db.users.find_one({"id": post['author_id']}, {"_id": 0})
+        author = author_map.get(post['author_id'])
         if not author:
             continue
-        
-        comment_count = await db.comments.count_documents({"post_id": post['id'], "is_removed": False})
-        
-        user_reaction = await db.reactions.find_one({"post_id": post['id'], "user_id": user_id}, {"_id": 0})
-        user_voted = await db.votes.find_one({"post_id": post['id'], "voter_id": user_id}, {"_id": 0})
         
         posts.append(PostResponse(
             id=post['id'],
@@ -615,9 +635,9 @@ async def get_posts(society_id: str, user_id: str, sort: str = "latest"):
             poll_closed_at=post.get('poll_closed_at'),
             poll_options=[PollOptionResponse(**o) for o in post['poll_options']] if post.get('poll_options') else None,
             reactions=post.get('reactions', {"agree": 0, "interesting": 0, "me_too": 0}),
-            comment_count=comment_count,
-            user_reaction=user_reaction['reaction_type'] if user_reaction else None,
-            user_voted_option=user_voted['option_id'] if user_voted else None
+            comment_count=comment_count_map.get(post['id'], 0),
+            user_reaction=user_reaction_map.get(post['id']),
+            user_voted_option=user_vote_map.get(post['id'])
         ))
     
     return posts
@@ -782,9 +802,17 @@ async def create_comment(post_id: str, comment: CommentCreate, user_id: str):
 async def get_comments(post_id: str):
     comments = await db.comments.find({"post_id": post_id, "is_removed": False}, {"_id": 0}).sort("created_at", 1).to_list(100)
     
+    if not comments:
+        return []
+    
+    # Batch fetch all authors
+    author_ids = list(set(c['author_id'] for c in comments))
+    authors_list = await db.users.find({"id": {"$in": author_ids}}, {"_id": 0, "id": 1, "persona_name": 1, "persona_color": 1}).to_list(len(author_ids))
+    author_map = {a['id']: a for a in authors_list}
+    
     result = []
     for c in comments:
-        author = await db.users.find_one({"id": c['author_id']}, {"_id": 0})
+        author = author_map.get(c['author_id'])
         result.append(CommentResponse(
             id=c['id'],
             post_id=c['post_id'],
@@ -841,15 +869,26 @@ async def create_report(report: ReportCreate, user_id: str):
 # ==================== USER POSTS HISTORY ====================
 @api_router.get("/users/{user_id}/posts", response_model=List[PostResponse])
 async def get_user_posts(user_id: str):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1, "persona_name": 1, "persona_color": 1})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
     posts = await db.posts.find({"author_id": user_id, "is_removed": False}, {"_id": 0}).sort("created_at", -1).to_list(50)
     
+    if not posts:
+        return []
+    
+    # Batch fetch comment counts
+    post_ids = [p['id'] for p in posts]
+    comment_counts_pipeline = [
+        {"$match": {"post_id": {"$in": post_ids}, "is_removed": False}},
+        {"$group": {"_id": "$post_id", "count": {"$sum": 1}}}
+    ]
+    comment_counts_list = await db.comments.aggregate(comment_counts_pipeline).to_list(len(post_ids))
+    comment_count_map = {c['_id']: c['count'] for c in comment_counts_list}
+    
     result = []
     for post in posts:
-        comment_count = await db.comments.count_documents({"post_id": post['id'], "is_removed": False})
         result.append(PostResponse(
             id=post['id'],
             society_id=post['society_id'],
@@ -867,7 +906,7 @@ async def get_user_posts(user_id: str):
             poll_closed_at=post.get('poll_closed_at'),
             poll_options=[PollOptionResponse(**o) for o in post['poll_options']] if post.get('poll_options') else None,
             reactions=post.get('reactions', {"agree": 0, "interesting": 0, "me_too": 0}),
-            comment_count=comment_count
+            comment_count=comment_count_map.get(post['id'], 0)
         ))
     
     return result

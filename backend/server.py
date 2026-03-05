@@ -10,7 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Literal
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -191,6 +191,179 @@ async def seed_societies():
             await db.societies.insert_one(doc)
         logging.info("Seeded 10 societies")
 
+# Demo account constant
+DEMO_USER_ID = "demo-user-12345"
+DEMO_MOBILE_HASH = hash_mobile("0000000000")
+
+SAMPLE_POSTS = [
+    {
+        "post_type": "discussion",
+        "title": "Weekend parking rules getting too strict?",
+        "body": "Has anyone else noticed the new parking restrictions? Guests are being charged even for short visits now. What do you all think about this?"
+    },
+    {
+        "post_type": "question",
+        "title": "Best internet provider in our society?",
+        "body": "Moving in next week and need to set up WiFi. Which provider works best here - ACT, Airtel, or JioFiber? Looking for reliable speed for WFH."
+    },
+    {
+        "post_type": "poll",
+        "title": "Should we organize a Holi celebration this year?",
+        "body": None,
+        "poll_options": ["Yes, in the common area", "Yes, but only dry colors", "No, keep it individual", "Maybe next year"],
+        "poll_visibility": "realtime"
+    },
+    {
+        "post_type": "discussion",
+        "title": "Dog owners - please pick up after your pets! 🐕",
+        "body": "I love dogs but finding surprises on the walking track is not fun. Can we please be responsible pet owners? Maybe the RWA can install more waste bins?"
+    },
+    {
+        "post_type": "question",
+        "title": "Anyone know a good plumber?",
+        "body": "Kitchen sink has been leaking for days. The society maintenance is taking too long. Any recommendations for a reliable plumber nearby?"
+    },
+    {
+        "post_type": "poll",
+        "title": "Best time for gym slot booking?",
+        "body": None,
+        "poll_options": ["6-8 AM", "8-10 AM", "5-7 PM", "7-9 PM"],
+        "poll_visibility": "realtime"
+    },
+    {
+        "post_type": "discussion",
+        "title": "Power backup during outages has been amazing lately",
+        "body": "Just wanted to appreciate the maintenance team. The generator switchover is now seamless. Great improvement from last year!"
+    },
+    {
+        "post_type": "question", 
+        "title": "Is the swimming pool opening this summer?",
+        "body": "Heard some rumors about renovations. Does anyone have official info from the RWA about when the pool will be operational?"
+    }
+]
+
+async def create_demo_account():
+    """Create or get demo account"""
+    existing = await db.users.find_one({"id": DEMO_USER_ID}, {"_id": 0})
+    if existing:
+        return existing
+    
+    # Create demo user
+    demo_user = {
+        "id": DEMO_USER_ID,
+        "mobile_hash": DEMO_MOBILE_HASH,
+        "society_id": None,  # Will be set to first society
+        "persona_name": "DemoExplorer42",
+        "persona_color": "#6366F1",
+        "is_admin": False,
+        "is_banned": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(demo_user)
+    return demo_user
+
+async def seed_demo_posts(society_id: str):
+    """Seed sample posts for a society if none exist"""
+    existing_posts = await db.posts.count_documents({"society_id": society_id})
+    if existing_posts > 0:
+        return
+    
+    # Create demo personas for variety
+    demo_personas = [
+        ("CuriousOwl87", "#8B5CF6"),
+        ("SilentMango23", "#EC4899"),
+        ("BoldPhoenix45", "#F97316"),
+        ("CleverRaven91", "#22C55E"),
+        ("WittyPanda33", "#06B6D4"),
+        ("GentleFox67", "#3B82F6"),
+        ("SwiftEagle12", "#EAB308"),
+        ("BrightStar55", "#14B8A6")
+    ]
+    
+    # Create demo users for posts
+    demo_authors = []
+    for i, (name, color) in enumerate(demo_personas):
+        author_id = f"demo-author-{i}"
+        existing_author = await db.users.find_one({"id": author_id}, {"_id": 0})
+        if not existing_author:
+            await db.users.insert_one({
+                "id": author_id,
+                "mobile_hash": hash_mobile(f"111111111{i}"),
+                "society_id": society_id,
+                "persona_name": name,
+                "persona_color": color,
+                "is_admin": False,
+                "is_banned": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+        demo_authors.append({"id": author_id, "name": name, "color": color})
+    
+    # Create sample posts
+    for i, post_data in enumerate(SAMPLE_POSTS):
+        author = demo_authors[i % len(demo_authors)]
+        post_id = str(uuid.uuid4())
+        
+        # Vary creation times for realistic feel
+        hours_ago = random.randint(1, 72)
+        created_at = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
+        
+        poll_options = []
+        if post_data["post_type"] == "poll" and post_data.get("poll_options"):
+            for opt_text in post_data["poll_options"]:
+                poll_options.append({
+                    "id": str(uuid.uuid4()),
+                    "option_text": opt_text,
+                    "vote_count": random.randint(2, 15)
+                })
+        
+        post_doc = {
+            "id": post_id,
+            "society_id": society_id,
+            "author_id": author["id"],
+            "post_type": post_data["post_type"],
+            "title": post_data["title"],
+            "body": post_data.get("body"),
+            "created_at": created_at.isoformat(),
+            "is_pinned": False,
+            "is_removed": False,
+            "report_count": 0,
+            "poll_visibility": post_data.get("poll_visibility", "realtime") if post_data["post_type"] == "poll" else None,
+            "poll_closed_at": None,
+            "poll_options": poll_options if poll_options else None,
+            "reactions": {
+                "agree": random.randint(0, 12),
+                "interesting": random.randint(0, 8),
+                "me_too": random.randint(0, 6)
+            }
+        }
+        await db.posts.insert_one(post_doc)
+        
+        # Add some sample comments
+        num_comments = random.randint(0, 3)
+        for j in range(num_comments):
+            comment_author = random.choice(demo_authors)
+            comment_texts = [
+                "Totally agree with this!",
+                "Thanks for bringing this up.",
+                "Has anyone contacted the RWA about this?",
+                "Same issue in my block too.",
+                "Great point, we should discuss this in the next meeting.",
+                "+1, facing the same problem",
+                "This has been going on for weeks now.",
+                "Finally someone said it!"
+            ]
+            await db.comments.insert_one({
+                "id": str(uuid.uuid4()),
+                "post_id": post_id,
+                "author_id": comment_author["id"],
+                "body": random.choice(comment_texts),
+                "created_at": (created_at + timedelta(hours=random.randint(1, 12))).isoformat(),
+                "is_removed": False,
+                "report_count": 0
+            })
+    
+    logging.info(f"Seeded {len(SAMPLE_POSTS)} sample posts for society {society_id}")
+
 # ==================== AUTH ENDPOINTS ====================
 @api_router.post("/auth/login", response_model=LoginResponse)
 async def login(req: LoginRequest):
@@ -261,7 +434,45 @@ async def select_society(user_id: str, req: SelectSocietyRequest):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Seed sample posts for this society
+    await seed_demo_posts(req.society_id)
+    
     return {"success": True, "society": society}
+
+# Demo account endpoint
+@api_router.post("/auth/demo")
+async def login_demo():
+    """Login with demo account - pre-populated with sample data"""
+    await seed_societies()
+    
+    # Get first society
+    first_society = await db.societies.find_one({}, {"_id": 0})
+    if not first_society:
+        raise HTTPException(status_code=500, detail="No societies available")
+    
+    # Create or get demo user
+    demo_user = await create_demo_account()
+    
+    # Update demo user's society
+    await db.users.update_one(
+        {"id": DEMO_USER_ID},
+        {"$set": {"society_id": first_society["id"]}}
+    )
+    
+    # Seed posts for the demo society
+    await seed_demo_posts(first_society["id"])
+    
+    return {
+        "user": UserResponse(
+            id=DEMO_USER_ID,
+            society_id=first_society["id"],
+            persona_name="DemoExplorer42",
+            persona_color="#6366F1",
+            is_admin=False
+        ),
+        "is_new": False,
+        "is_demo": True
+    }
 
 # ==================== SOCIETIES ENDPOINTS ====================
 @api_router.get("/societies", response_model=List[SocietyResponse])

@@ -43,6 +43,14 @@ export const UserProvider = ({ children }) => {
     return { user: userData, isNew: is_new };
   };
 
+  const loginDemo = async () => {
+    const response = await axios.post(`${API}/auth/demo`);
+    const { user: userData } = response.data;
+    setUser(userData);
+    localStorage.setItem('societysocials_user', JSON.stringify(userData));
+    return { user: userData, isDemo: true };
+  };
+
   const selectSociety = async (societyId) => {
     if (!user) return;
     const response = await axios.put(`${API}/users/${user.id}/society`, { society_id: societyId });
@@ -58,7 +66,7 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, isLoading, login, selectSociety, logout, refreshUser }}>
+    <UserContext.Provider value={{ user, isLoading, login, loginDemo, selectSociety, logout, refreshUser }}>
       {children}
     </UserContext.Provider>
   );

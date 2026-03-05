@@ -1,13 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Users, MessageCircle } from 'lucide-react';
+import { Shield, Users, MessageCircle, Play, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/context/UserContext';
+import { toast } from 'sonner';
 
 const SplashScreen = () => {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, loginDemo } = useUser();
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   useEffect(() => {
     if (user?.society_id) {
@@ -20,6 +22,19 @@ const SplashScreen = () => {
       navigate('/select-society');
     } else {
       navigate('/login');
+    }
+  };
+
+  const handleTryDemo = async () => {
+    setIsDemoLoading(true);
+    try {
+      await loginDemo();
+      toast.success('Welcome to the demo!');
+      navigate('/feed');
+    } catch (error) {
+      toast.error('Failed to load demo');
+    } finally {
+      setIsDemoLoading(false);
     }
   };
 
@@ -89,7 +104,7 @@ const SplashScreen = () => {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.6, duration: 0.5 }}
-        className="mt-12 w-full max-w-sm relative z-10"
+        className="mt-12 w-full max-w-sm relative z-10 space-y-3"
       >
         <Button
           onClick={handleGetStarted}
@@ -97,6 +112,23 @@ const SplashScreen = () => {
           className="w-full py-6 text-lg font-semibold rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-500/30 transition-all duration-300 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98]"
         >
           Get Started
+        </Button>
+        
+        <Button
+          onClick={handleTryDemo}
+          disabled={isDemoLoading}
+          data-testid="try-demo-btn"
+          variant="outline"
+          className="w-full py-5 text-base font-medium rounded-full bg-transparent border-2 border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/10 text-slate-300 hover:text-white transition-all duration-300"
+        >
+          {isDemoLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              <Play className="w-4 h-4 mr-2 fill-current" />
+              Try Demo
+            </>
+          )}
         </Button>
         
         <p className="mt-4 text-center text-sm text-slate-600">

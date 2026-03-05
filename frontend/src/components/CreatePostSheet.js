@@ -119,7 +119,7 @@ const CreatePostSheet = ({ open, onClose, onPostCreated }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/60 z-50"
+            className="fixed inset-0 bg-black/60 z-[60]"
           />
 
           {/* Sheet */}
@@ -128,7 +128,7 @@ const CreatePostSheet = ({ open, onClose, onPostCreated }) => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900 rounded-t-3xl max-h-[90vh] overflow-auto"
+            className="fixed bottom-0 left-0 right-0 z-[70] bg-slate-900 rounded-t-3xl max-h-[85vh] overflow-auto pb-safe"
             data-testid="create-post-sheet"
           >
             {/* Handle */}
@@ -305,18 +305,20 @@ const CreatePostSheet = ({ open, onClose, onPostCreated }) => {
                   )}
 
                   {/* Submit Button */}
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!title.trim() || isSubmitting}
-                    data-testid="submit-post-btn"
-                    className="w-full py-6 mt-4 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white font-semibold"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      'Post'
-                    )}
-                  </Button>
+                  <div className="pb-8">
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!title.trim() || isSubmitting}
+                      data-testid="submit-post-btn"
+                      className="w-full py-6 mt-4 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white font-semibold"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        'Post'
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

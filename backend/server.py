@@ -256,7 +256,7 @@ SAMPLE_POSTS = [
     },
     {
         "post_type": "discussion",
-        "title": "Dog owners - please pick up after your pets! 🐕",
+        "title": "Dog owners - please pick up after your pets!",
         "body": "I love dogs but finding surprises on the walking track is not fun. Can we please be responsible pet owners? Maybe the RWA can install more waste bins?"
     },
     {
@@ -280,6 +280,62 @@ SAMPLE_POSTS = [
         "post_type": "question", 
         "title": "Is the swimming pool opening this summer?",
         "body": "Heard some rumors about renovations. Does anyone have official info from the RWA about when the pool will be operational?"
+    },
+    {
+        "post_type": "question",
+        "title": "Gift ideas for a 5-year-old girl?",
+        "body": "My neighbor's daughter is turning 5 next week. Any suggestions for age-appropriate gifts? Budget around 1000-1500. She loves unicorns apparently!"
+    },
+    {
+        "post_type": "poll",
+        "title": "Anyone interested in a poker night?",
+        "body": None,
+        "poll_options": ["Yes, count me in!", "Maybe, depends on timing", "Not into poker but interested in game nights", "No thanks"],
+        "poll_visibility": "realtime"
+    },
+    {
+        "post_type": "question",
+        "title": "Reliable carpenter for custom wardrobe?",
+        "body": "Looking to get a walk-in closet made. Anyone got contacts for a good carpenter who does quality work? Preferably someone who has worked in our society before."
+    },
+    {
+        "post_type": "discussion",
+        "title": "Did anyone else hear that argument at A-block last night?",
+        "body": "Around 11 PM there was quite a commotion near A-block parking. Sounded pretty intense. Hope everything is okay with those neighbors!"
+    },
+    {
+        "post_type": "poll",
+        "title": "New Year's Eve party at clubhouse?",
+        "body": None,
+        "poll_options": ["Yes! Let's celebrate together", "Only if it's family-friendly", "Prefer a quiet evening", "Depends on the entry fee"],
+        "poll_visibility": "realtime"
+    },
+    {
+        "post_type": "question",
+        "title": "Who's the couple that sings karaoke every Saturday?",
+        "body": "Not complaining, they're actually pretty good! Just curious if anyone knows them. Would love to invite them to our building potluck."
+    },
+    {
+        "post_type": "discussion",
+        "title": "Security guard shift change drama",
+        "body": "Noticed the old security team was replaced suddenly. Anyone know what happened? The new guys don't seem to know the residents yet."
+    },
+    {
+        "post_type": "question",
+        "title": "Zomato/Swiggy delivery riders in the lift - allowed?",
+        "body": "Had a heated discussion with a delivery guy today. He insisted on using the residents' lift. What's the official rule? Anyone know?"
+    },
+    {
+        "post_type": "poll",
+        "title": "Should pets be allowed in the clubhouse garden?",
+        "body": None,
+        "poll_options": ["Yes, with supervision", "Only during specific hours", "Designated pet area only", "No pets in common areas"],
+        "poll_visibility": "realtime"
+    },
+    {
+        "post_type": "discussion",
+        "title": "That new cafe near gate 2 is amazing!",
+        "body": "Finally a decent coffee place within walking distance! Their cold brew is chef's kiss. Plus they have a nice work-from-cafe setup with good WiFi."
     }
 ]
 

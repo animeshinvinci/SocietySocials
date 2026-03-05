@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, TrendingUp, Clock, RefreshCw, Loader2, MessageSquare, HelpCircle, BarChart3, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Plus, TrendingUp, Clock, RefreshCw, Loader2, MessageSquare, HelpCircle, BarChart3, Eye, EyeOff, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
@@ -122,9 +122,14 @@ const FeedScreen = () => {
                 </Button>
               )}
               <div>
-                <h1 className="text-xl font-bold text-white" data-testid="society-name">
-                  {currentSociety?.name || 'Feed'}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-white" data-testid="society-name">
+                    {currentSociety?.name || 'Feed'}
+                  </h1>
+                  {currentSociety?.total_units && (
+                    <span className="text-xs text-slate-500">{currentSociety.total_units} units</span>
+                  )}
+                </div>
                 {isViewingDemo && (
                   <span className="text-xs text-amber-400">Viewing Demo</span>
                 )}
@@ -154,6 +159,23 @@ const FeedScreen = () => {
               </Button>
             </div>
           </div>
+
+          {/* Back to Own Society Banner */}
+          {isViewingDemo && (
+            <div 
+              onClick={handleReturnToOwn}
+              className="mb-3 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 cursor-pointer hover:bg-indigo-500/20 transition-colors"
+              data-testid="back-to-society-banner"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-indigo-400 text-sm font-medium">You're viewing Demo Society</p>
+                  <p className="text-slate-400 text-xs">Tap to go back to your society</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-indigo-400" />
+              </div>
+            </div>
+          )}
 
           {/* Sort Tabs */}
           <div className="flex gap-2 mb-3">

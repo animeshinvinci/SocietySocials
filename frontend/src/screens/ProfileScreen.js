@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, ChevronRight, Loader2, MessageSquare } from 'lucide-react';
+import { LogOut, ChevronRight, Loader2, MessageSquare, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +20,7 @@ import axios from 'axios';
 import Avatar from '@/components/Avatar';
 import PostCard from '@/components/PostCard';
 import BottomNav from '@/components/BottomNav';
+import CreatePostSheet from '@/components/CreatePostSheet';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -28,6 +28,7 @@ const ProfileScreen = () => {
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useUser();
 
@@ -52,6 +53,12 @@ const ProfileScreen = () => {
     logout();
     navigate('/');
     toast.success('Logged out successfully');
+  };
+
+  const handlePostCreated = (newPost) => {
+    setPosts([newPost, ...posts]);
+    setShowCreatePost(false);
+    toast.success('Post created!');
   };
 
   if (!user) {
@@ -126,9 +133,11 @@ const ProfileScreen = () => {
             <MessageSquare className="w-12 h-12 mx-auto text-slate-700 mb-3" />
             <p className="text-slate-400">You haven't posted anything yet</p>
             <Button
-              onClick={() => navigate('/feed')}
+              onClick={() => setShowCreatePost(true)}
+              data-testid="create-first-post-btn"
               className="mt-4 bg-indigo-600 hover:bg-indigo-500 rounded-full"
             >
+              <Plus className="w-4 h-4 mr-2" />
               Create your first post
             </Button>
           </div>
@@ -168,6 +177,13 @@ const ProfileScreen = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Post Sheet */}
+      <CreatePostSheet
+        open={showCreatePost}
+        onClose={() => setShowCreatePost(false)}
+        onPostCreated={handlePostCreated}
+      />
 
       {/* Bottom Nav */}
       <BottomNav active="profile" />

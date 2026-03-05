@@ -1,4 +1,4 @@
-import { ThumbsUp, Lightbulb, Users } from 'lucide-react';
+import { ThumbsUp, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ReactionButtons = ({ reactions, userReaction, onReaction, compact = false }) => {
@@ -6,21 +6,14 @@ const ReactionButtons = ({ reactions, userReaction, onReaction, compact = false 
     { 
       type: 'agree', 
       icon: ThumbsUp, 
-      label: 'Agree',
+      label: 'Like',
       activeClass: 'reaction-agree active',
       inactiveClass: 'reaction-agree'
     },
     { 
-      type: 'interesting', 
-      icon: Lightbulb, 
-      label: 'Interesting',
-      activeClass: 'reaction-interesting active',
-      inactiveClass: 'reaction-interesting'
-    },
-    { 
       type: 'me_too', 
-      icon: Users, 
-      label: 'Me Too',
+      icon: Heart, 
+      label: 'Relate',
       activeClass: 'reaction-me-too active',
       inactiveClass: 'reaction-me-too'
     }
@@ -31,7 +24,6 @@ const ReactionButtons = ({ reactions, userReaction, onReaction, compact = false 
       <div className="flex items-center gap-1">
         {reactionTypes.map(({ type, icon: Icon }) => {
           const isActive = userReaction === type;
-          const count = reactions?.[type] || 0;
           
           return (
             <button
@@ -45,7 +37,7 @@ const ReactionButtons = ({ reactions, userReaction, onReaction, compact = false 
                   : 'text-slate-500 hover:bg-slate-800/50 hover:text-slate-300'
               )}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className={cn("w-4 h-4", isActive && type === 'me_too' && "fill-current")} />
             </button>
           );
         })}
@@ -69,7 +61,7 @@ const ReactionButtons = ({ reactions, userReaction, onReaction, compact = false 
               isActive ? activeClass : inactiveClass
             )}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className={cn("w-4 h-4", isActive && type === 'me_too' && "fill-current")} />
             <span>{label}</span>
             {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
           </button>

@@ -175,25 +175,49 @@ const SocietySelectScreen = () => {
             animate="show"
             className="space-y-3 pb-32"
           >
-            {/* Request New Society Card */}
-            <motion.div
-              variants={item}
-              onClick={() => setShowRequestForm(true)}
-              data-testid="request-society-card"
-              className="society-card cursor-pointer border-dashed hover:border-indigo-500/50"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                  <Plus className="w-6 h-6 text-indigo-400" />
+            {/* Quick Action Cards - Request & Test Society */}
+            <motion.div variants={item} className="flex gap-2">
+              {/* Request New Society */}
+              <div
+                onClick={() => setShowRequestForm(true)}
+                data-testid="request-society-card"
+                className="flex-1 society-card cursor-pointer border-dashed hover:border-indigo-500/50 py-3 px-3"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                    <Plus className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-indigo-400 text-xs">Can't find yours?</p>
+                    <p className="text-xs text-slate-500">Request to add</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-indigo-400">Can't find your society?</p>
-                  <p className="text-sm text-slate-500">Request to add it</p>
+              </div>
+
+              {/* Test Society */}
+              <div
+                onClick={() => {
+                  const testSociety = societies.find(s => s.name === 'Test Society');
+                  if (testSociety) {
+                    setSelected(testSociety);
+                  }
+                }}
+                data-testid="test-society-card"
+                className="flex-1 society-card cursor-pointer border-dashed hover:border-amber-500/50 py-3 px-3"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-amber-400 text-xs">Test Society</p>
+                    <p className="text-xs text-slate-500">For testing</p>
+                  </div>
                 </div>
               </div>
             </motion.div>
 
-            {societies.map((society) => (
+            {societies.filter(s => s.name !== 'Test Society').map((society) => (
               <motion.div
                 key={society.id}
                 variants={item}

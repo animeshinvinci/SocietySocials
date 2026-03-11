@@ -14,6 +14,7 @@ import {
 import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { track } from '@/lib/amplitude';
 
 import Avatar from '@/components/Avatar';
 import ReactionButtons from '@/components/ReactionButtons';
@@ -36,16 +37,17 @@ const PostDetailScreen = () => {
   const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
-    fetchPost();
+    fetchPost(true);
     fetchComments();
   }, [postId]);
 
-  const fetchPost = async () => {
+  const fetchPost = async (isInitial = false) => {
     try {
       const response = await axios.get(`${API}/posts/${postId}`, {
         params: { user_id: user.id }
       });
       setPost(response.data);
+      if (isInitial) track('Post Viewed', { post_id: postId, post_type: response.data.post_type });
     } catch (error) {
       toast.error('Post not found');
       navigate('/feed');
@@ -65,10 +67,11 @@ const PostDetailScreen = () => {
 
   const handleReaction = async (reactionType) => {
     try {
-      await axios.post(`${API}/posts/${postId}/reactions`, 
+      await axios.post(`${API}/posts/${postId}/reactions`,
         { reaction_type: reactionType },
         { params: { user_id: user.id } }
       );
+      track('Reaction Added', { post_id: postId, reaction_type: reactionType });
       fetchPost();
     } catch (error) {
       toast.error('Failed to react');
@@ -81,6 +84,7 @@ const PostDetailScreen = () => {
         { option_id: optionId },
         { params: { user_id: user.id } }
       );
+      track('Poll Voted', { post_id: postId, option_id: optionId });
       fetchPost();
       toast.success('Vote recorded!');
     } catch (error) {
@@ -93,6 +97,7 @@ const PostDetailScreen = () => {
       await axios.post(`${API}/posts/${postId}/close-poll`, null, {
         params: { user_id: user.id }
       });
+      track('Poll Closed', { post_id: postId });
       fetchPost();
       toast.success('Poll closed!');
     } catch (error) {
@@ -110,6 +115,7 @@ const PostDetailScreen = () => {
         { body: newComment },
         { params: { user_id: user.id } }
       );
+      track('Comment Submitted', { post_id: postId });
       setComments([...comments, response.data]);
       setNewComment('');
       toast.success('Comment added!');
@@ -126,6 +132,7 @@ const PostDetailScreen = () => {
         { target_type: 'post', target_id: postId, reason },
         { params: { user_id: user.id } }
       );
+      track('Content Reported', { post_id: postId, reason });
       toast.success("Thanks, we'll review this");
       setShowReport(false);
     } catch (error) {

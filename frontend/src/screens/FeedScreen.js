@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { track } from '@/lib/amplitude';
 
 import PostCard from '@/components/PostCard';
 import CreatePostSheet from '@/components/CreatePostSheet';
@@ -52,12 +53,19 @@ const FeedScreen = () => {
     fetchPosts();
   }, [fetchPosts]);
 
+  useEffect(() => {
+    if (user?.society_id) {
+      track('Feed Viewed', { society_id: user.society_id, is_demo: isViewingDemo });
+    }
+  }, []); // eslint-disable-line
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchPosts(false);
   };
 
   const handlePostCreated = (newPost) => {
+    track('Post Created', { post_type: newPost.post_type });
     setPosts([newPost, ...posts]);
     setShowCreatePost(false);
     toast.success('Post created!');
@@ -65,10 +73,11 @@ const FeedScreen = () => {
 
   const handleReaction = async (postId, reactionType) => {
     try {
-      await axios.post(`${API}/posts/${postId}/reactions`, 
+      await axios.post(`${API}/posts/${postId}/reactions`,
         { reaction_type: reactionType },
         { params: { user_id: user.id } }
       );
+      track('Reaction Added', { post_id: postId, reaction_type: reactionType });
       fetchPosts(false);
     } catch (error) {
       toast.error('Failed to react');
@@ -78,6 +87,7 @@ const FeedScreen = () => {
   const handleViewDemo = async () => {
     try {
       await viewDemoSociety();
+      track('Demo Society Viewed');
       toast.success('Viewing demo society');
     } catch (error) {
       toast.error('Failed to load demo');
@@ -182,7 +192,7 @@ const FeedScreen = () => {
             <Button
               variant={sort === 'latest' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setSort('latest')}
+              onClick={() => { setSort('latest'); track('Feed Sort Changed', { sort: 'latest' }); }}
               data-testid="sort-latest-btn"
               className={`rounded-full ${
                 sort === 'latest' 
@@ -196,7 +206,7 @@ const FeedScreen = () => {
             <Button
               variant={sort === 'popular' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setSort('popular')}
+              onClick={() => { setSort('popular'); track('Feed Sort Changed', { sort: 'popular' }); }}
               data-testid="sort-popular-btn"
               className={`rounded-full ${
                 sort === 'popular' 
@@ -216,7 +226,7 @@ const FeedScreen = () => {
                 key={label}
                 variant={postTypeFilter === value ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setPostTypeFilter(value)}
+                onClick={() => { setPostTypeFilter(value); track('Feed Filter Changed', { filter: value || 'all' }); }}
                 data-testid={`filter-${value || 'all'}`}
                 className={`rounded-full shrink-0 ${
                   postTypeFilter === value 

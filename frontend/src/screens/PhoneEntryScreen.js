@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
+import { track } from '@/lib/amplitude';
 
 const PhoneEntryScreen = () => {
   const [mobile, setMobile] = useState('');
@@ -24,13 +25,14 @@ const PhoneEntryScreen = () => {
     setIsLoading(true);
     try {
       const { user, isNew } = await login(mobile);
-      
+      track('Login Completed', { is_new_user: isNew });
       if (isNew || !user.society_id) {
         navigate('/select-society');
       } else {
         navigate('/feed');
       }
     } catch (error) {
+      track('Login Failed');
       toast.error(error.response?.data?.detail || 'Something went wrong');
     } finally {
       setIsLoading(false);

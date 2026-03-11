@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { track } from '@/lib/amplitude';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -50,6 +51,7 @@ const SocietySelectScreen = () => {
   const handleSearch = (value) => {
     setSearch(value);
     fetchSocieties(value);
+    if (value) track('Society Searched', { query: value });
   };
 
   const handleSelect = (society) => {
@@ -62,6 +64,7 @@ const SocietySelectScreen = () => {
     setIsSubmitting(true);
     try {
       await selectSociety(selected.id);
+      track('Society Selected', { society_name: selected.name, society_city: selected.city, society_id: selected.id });
       navigate('/persona-reveal');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to select society');
@@ -86,6 +89,7 @@ const SocietySelectScreen = () => {
       }, {
         params: user ? { user_id: user.id } : {}
       });
+      track('Society Request Submitted', { name: requestForm.name, city: requestForm.city });
       toast.success('Request submitted! Admin will review and add your society.');
       setShowRequestForm(false);
       setRequestForm({ name: '', locality: '', city: '', total_units: '' });

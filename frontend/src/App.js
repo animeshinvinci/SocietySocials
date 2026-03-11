@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import "@/App.css";
+import { initAmplitude, track } from "@/lib/amplitude";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/sonner";
@@ -54,6 +55,11 @@ const AppRoutes = () => {
 };
 
 function App() {
+  useEffect(() => {
+    initAmplitude();
+    track('App Opened');
+  }, []);
+
   return (
     <div className="App min-h-screen bg-slate-950 noise-bg">
       <BrowserRouter>

@@ -5,6 +5,7 @@ import { Shield, Users, MessageCircle, Play, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
+import { track } from '@/lib/amplitude';
 
 const SplashScreen = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const SplashScreen = () => {
   }, [user, navigate]);
 
   const handleGetStarted = () => {
+    track('Get Started Tapped');
     if (user && !user.society_id) {
       navigate('/select-society');
     } else {
@@ -27,6 +29,7 @@ const SplashScreen = () => {
 
   const handleTryDemo = async () => {
     setIsDemoLoading(true);
+    track('Demo Started');
     try {
       await loginDemo();
       toast.success('Welcome to the demo!');

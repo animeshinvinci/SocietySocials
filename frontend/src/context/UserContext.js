@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { identifyUser, resetUser } from '@/lib/amplitude';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -19,6 +20,7 @@ export const UserProvider = ({ children }) => {
         const parsed = JSON.parse(stored);
         setUser(parsed);
         setOriginalSocietyId(parsed.society_id);
+        identifyUser(parsed.id);
         refreshUser(parsed.id);
       } catch (e) {
         localStorage.removeItem('societysocials_user');
@@ -58,6 +60,7 @@ export const UserProvider = ({ children }) => {
     const { user: userData, is_new } = response.data;
     setUser(userData);
     setOriginalSocietyId(userData.society_id);
+    identifyUser(userData.id);
     localStorage.setItem('societysocials_user', JSON.stringify(userData));
     return { user: userData, isNew: is_new };
   };
@@ -66,6 +69,7 @@ export const UserProvider = ({ children }) => {
     const response = await axios.post(`${API}/auth/demo`);
     const { user: userData } = response.data;
     setUser(userData);
+    identifyUser(userData.id);
     localStorage.setItem('societysocials_user', JSON.stringify(userData));
     return { user: userData, isDemo: true };
   };
@@ -118,6 +122,7 @@ export const UserProvider = ({ children }) => {
     setOriginalSocietyId(null);
     setIsViewingDemo(false);
     localStorage.removeItem('societysocials_user');
+    resetUser();
   };
 
   return (

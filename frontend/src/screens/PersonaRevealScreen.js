@@ -8,6 +8,7 @@ import { useUser } from '@/context/UserContext';
 import { toast } from 'sonner';
 import Avatar from '@/components/Avatar';
 import axios from 'axios';
+import { track } from '@/lib/amplitude';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -26,6 +27,7 @@ const PersonaRevealScreen = () => {
     if (!user) {
       navigate('/login');
     } else {
+      track('Persona Revealed', { persona_name: user.persona_name });
       fetchSuggestions();
     }
   }, [user, navigate]);
@@ -94,6 +96,7 @@ const PersonaRevealScreen = () => {
     setIsSaving(true);
     try {
       await updatePersona(editName);
+      track('Persona Name Changed', { new_name: editName });
       toast.success('Persona name updated!');
       setIsEditing(false);
     } catch (error) {
@@ -107,6 +110,7 @@ const PersonaRevealScreen = () => {
     setIsSaving(true);
     try {
       await updatePersona(name);
+      track('Persona Name Changed', { new_name: name, from_suggestion: true });
       toast.success('Persona name updated!');
       fetchSuggestions();
     } catch (error) {
